@@ -8,6 +8,10 @@ const getById = (id) => {
   return Poetry.findById(id);
 };
 
+const getByField = (field) => {
+  return Poetry.find(field);
+};
+
 const create = (newValue) => {
   const createdPoem = new Poetry(newValue);
   return createdPoem.save();
@@ -27,6 +31,7 @@ const remove = (id) => {
 module.exports = {
   getAll,
   getById,
+  getByField,
   create,
   update,
   remove,
