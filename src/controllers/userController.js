@@ -1,10 +1,10 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
 const bcrypt = require("bcrypt");
+const { generateToken, verifyToken } = require("../utils/jwtToken");
 
 const login = async (req, res) => {
   const { email, password } = req.body;
-
   const whitespaceRegex = /^\s*$/;
 
   if (whitespaceRegex.test(email) || whitespaceRegex.test(password)) {
@@ -20,26 +20,27 @@ const login = async (req, res) => {
   if (!validPassword)
     return res.status(400).send("Invalid username or password.");
 
-  const token = jwt.sign({ userId: user.id }, process.env.TOKEN_KEY);
+  const token = generateToken(user);
+  res.cookie("token", token, {
+    withCredentials: true,
+    httpOnly: false,
+  });
 
-  res.send({
-    token,
-    user: {
-      fullName: user.fullName,
-      photo: user.photo,
-      email: user.email,
-    },
+  res.json({
+    message: "User registered signed in",
+    token: token,
   });
 };
 
 const register = async (req, res) => {
   try {
-    const { fullName, email, password, photo } = req.body;
-
+    const { firstName, lastName, nickName, email, password, photo } = req.body;
     const whitespaceRegex = /^\s*$/;
 
     if (
-      whitespaceRegex.test(fullName) ||
+      whitespaceRegex.test(firstName) ||
+      whitespaceRegex.test(lastName) ||
+      whitespaceRegex.test(nickName) ||
       whitespaceRegex.test(email) ||
       whitespaceRegex.test(password) ||
       whitespaceRegex.test(photo)
@@ -56,13 +57,16 @@ const register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const user = new User({
-      fullName,
+      firstName,
+      lastName,
+      nickName,
       email,
       photo,
       password: hashedPassword,
     });
 
     const savedUser = await user.save();
+
     res.json({
       message: "User registered successfully",
       userId: savedUser._id,
@@ -73,4 +77,42 @@ const register = async (req, res) => {
   }
 };
 
-module.exports = { login, register };
+const authenticateToken = (req, res, next) => {
+  const token = req.headers["authorization"]?.split(" ")[1];
+  if (!token) {
+    return res
+      .status(401)
+      .json({ message: "Access denied. No token provided." });
+  }
+
+  try {
+    const user = verifyToken(token);
+    req.user = user;
+    next();
+  } catch (err) {
+    return res.status(400).json({ message: "Invalid token." });
+  }
+};
+
+const checkToken = (req, res, next) => {
+  const token = req.headers["authorization"]?.split(" ")[1];
+  if (!token) {
+    return res
+      .status(401)
+      .json({ message: "Access denied. No token provided." });
+  }
+
+  try {
+    const user = verifyToken(token);
+    if (user) {
+      res.status(200).json({
+        message: "User was checked by a token",
+        success: true,
+      });
+    }
+  } catch (err) {
+    return res.status(400).json({ message: "Invalid token." });
+  }
+};
+
+module.exports = { login, register, authenticateToken, checkToken };
