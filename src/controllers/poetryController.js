@@ -44,7 +44,7 @@ const getPoemById = async (req, res) => {
 const getPoemByAuthorId = async (req, res) => {
   try {
     const { id } = req.params;
-    const response = await getByField({ author: id });
+    const response = await getByField({ authorId: id });
 
     if (response) {
       return res.status(200).send({ success: true, data: response });
@@ -69,7 +69,7 @@ const createPoem = async (req, res) => {
 
     const createdPoem = await create({
       title,
-      author: req.user.id,
+      authorId: req.user.id,
       poem,
     });
 
@@ -98,7 +98,7 @@ const updatePoemById = async (req, res) => {
       return res.status(400).send({ msg: "The poem doesn't exist" });
     }
 
-    if (req.user.id !== poemById.author) {
+    if (req.user.id !== poemById.authorId) {
       return res
         .status(400)
         .send({ msg: "The author does not match the person logged in" });
@@ -130,7 +130,7 @@ const deletePoemById = async (req, res) => {
       return res.status(400).send({ msg: "The poem doesn't exist" });
     }
 
-    if (req.user.id !== poemById.author) {
+    if (req.user.id !== poemById.authorId) {
       return res
         .status(400)
         .send({ msg: "The author does not match the person logged in" });
@@ -162,7 +162,7 @@ const likePoemById = async (req, res) => {
       return res.status(400).send({ msg: "The poem doesn't exist" });
     }
 
-    if (userId.toString() === poemById.author.toString()) {
+    if (userId.toString() === poemById.authorId.toString()) {
       return res.status(400).send({ msg: "The author can't like own poem" });
     }
 

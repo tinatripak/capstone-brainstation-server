@@ -5,7 +5,7 @@ const poetrySchema = new mongoose.Schema({
     type: String,
     required: [true, "The poetry's title is required"],
   },
-  author: {
+  authorId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "user",
     required: [true, "The author ID is required"],
