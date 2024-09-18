@@ -28,7 +28,6 @@ const userSchema = new mongoose.Schema({
   },
   photo: {
     type: String,
-    required: [true, "Your photo is required"],
   },
   createdAt: {
     type: Date,
