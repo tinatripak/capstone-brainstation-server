@@ -6,7 +6,7 @@ const login = async (req, res) => {
   const { email, password } = req.body;
   const whitespaceRegex = /^\s*$/;
 
-  if (whitespaceRegex.test(email) || whitespaceRegex.test(password)) {
+  if (!whitespaceRegex.test(email) || !whitespaceRegex.test(password)) {
     return res.status(400).json({ message: "All fields are required" });
   }
 
@@ -31,6 +31,7 @@ const register = async (req, res) => {
   try {
     const { firstName, lastName, nickName, email, password, photo } = req.body;
     const whitespaceRegex = /^\s*$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
     if (
       whitespaceRegex.test(firstName) ||
@@ -40,6 +41,10 @@ const register = async (req, res) => {
       whitespaceRegex.test(password)
     ) {
       return res.status(400).json({ message: "All fields are required" });
+    }
+
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: "Email field is not valid" });
     }
 
     const existingUser = await User.findOne({ email });
