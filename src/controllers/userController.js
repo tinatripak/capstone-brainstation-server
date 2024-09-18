@@ -1,4 +1,3 @@
-const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
 const bcrypt = require("bcrypt");
 const { generateToken, verifyToken } = require("../utils/jwtToken");
@@ -21,10 +20,6 @@ const login = async (req, res) => {
     return res.status(400).send("Invalid username or password.");
 
   const token = generateToken(user);
-  res.cookie("token", token, {
-    withCredentials: true,
-    httpOnly: false,
-  });
 
   res.json({
     message: "User registered signed in",
@@ -42,8 +37,7 @@ const register = async (req, res) => {
       whitespaceRegex.test(lastName) ||
       whitespaceRegex.test(nickName) ||
       whitespaceRegex.test(email) ||
-      whitespaceRegex.test(password) ||
-      whitespaceRegex.test(photo)
+      whitespaceRegex.test(password)
     ) {
       return res.status(400).json({ message: "All fields are required" });
     }
@@ -61,7 +55,7 @@ const register = async (req, res) => {
       lastName,
       nickName,
       email,
-      photo,
+      photo: photo || "",
       password: hashedPassword,
     });
 
@@ -78,6 +72,7 @@ const register = async (req, res) => {
 };
 
 const authenticateToken = (req, res, next) => {
+  console.log(1);
   const token = req.headers["authorization"]?.split(" ")[1];
   if (!token) {
     return res
@@ -86,6 +81,7 @@ const authenticateToken = (req, res, next) => {
   }
 
   try {
+    console.log(token);
     const user = verifyToken(token);
     req.user = user;
     next();
@@ -94,7 +90,7 @@ const authenticateToken = (req, res, next) => {
   }
 };
 
-const checkToken = (req, res, next) => {
+const checkToken = (req, res) => {
   const token = req.headers["authorization"]?.split(" ")[1];
   if (!token) {
     return res
