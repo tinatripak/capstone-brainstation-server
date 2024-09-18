@@ -1,11 +1,11 @@
 const Poetry = require("../models/poetryModel");
 
 const getAll = () => {
-  return Poetry.find({});
+  return Poetry.find({}).populate("authorId", "firstName lastName");
 };
 
 const getById = (id) => {
-  return Poetry.findById(id);
+  return Poetry.findById(id).populate("authorId", "firstName lastName");
 };
 
 const getByField = (field) => {
