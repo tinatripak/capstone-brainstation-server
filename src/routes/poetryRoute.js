@@ -7,6 +7,7 @@ const {
   deletePoemById,
   likePoemById,
   getPoemByAuthorId,
+  getFavouritePoems,
 } = require("../controllers/poetryController");
 const { authenticateToken } = require("../controllers/userController");
 
@@ -20,5 +21,6 @@ router
 
 router.route("/:id/like").put(authenticateToken, likePoemById);
 router.route("/author/:id").get(getPoemByAuthorId);
+router.route("/:id/fav-poems").get(getFavouritePoems);
 
 module.exports = router;
