@@ -14,11 +14,19 @@ const poetrySchema = new mongoose.Schema({
     type: String,
     required: [true, "The poem is required"],
   },
-  likes: {
-    type: [mongoose.Schema.Types.ObjectId],
-    ref: "user",
-    default: [],
-  },
+  likes: [
+    {
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "user",
+        required: true,
+      },
+      date: {
+        type: Date,
+        default: Date.now,
+      },
+    },
+  ],
   createdAt: {
     type: Date,
     default: Date.now,
