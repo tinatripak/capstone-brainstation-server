@@ -9,7 +9,7 @@ const {
 
 const getPoems = async (req, res) => {
   try {
-    const response = await getAll().lean();
+    const response = await getAll().sort({ createdAt: -1 }).lean();
 
     if (response.length > 0) {
       return res.status(200).send({ success: true, data: response });
@@ -44,7 +44,7 @@ const getPoemById = async (req, res) => {
 const getPoemByAuthorId = async (req, res) => {
   try {
     const { id } = req.params;
-    const response = await getByField({ authorId: id });
+    const response = await getByField({ authorId: id }).sort({ createdAt: -1 });
 
     if (response) {
       return res.status(200).send({ success: true, data: response });
@@ -52,6 +52,27 @@ const getPoemByAuthorId = async (req, res) => {
       return res
         .status(400)
         .send({ success: false, msg: "Poems are not found by AuthorId" });
+    }
+  } catch (error) {
+    return res.status(404).send({ success: false, msg: error });
+  }
+};
+
+const getFavouritePoems = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const response = await getAll().lean();
+
+    const allPoems = response.filter((poem) =>
+      poem.likes.some((like) => like.userId.toString() === id.toString())
+    );
+    if (allPoems) {
+      return res.status(200).send({ success: true, data: allPoems });
+    } else {
+      return res.status(400).send({
+        success: false,
+        msg: "Favourite poems are not found by AuthorId",
+      });
     }
   } catch (error) {
     return res.status(404).send({ success: false, msg: error });
@@ -87,7 +108,6 @@ const updatePoemById = async (req, res) => {
   try {
     const { title, poem } = req.body;
     const whitespaceRegex = /^\s*$/;
-
     if (whitespaceRegex.test(title) || whitespaceRegex.test(poem)) {
       return res.status(400).json({ message: "All fields are required" });
     }
@@ -97,13 +117,11 @@ const updatePoemById = async (req, res) => {
     if (!poemById) {
       return res.status(400).send({ msg: "The poem doesn't exist" });
     }
-
-    if (req.user.id !== poemById.authorId) {
+    if (req.user.id.toString() !== poemById.authorId._id.toString()) {
       return res
         .status(400)
         .send({ msg: "The author does not match the person logged in" });
     }
-
     const updatedPoem = await update(
       { _id: req.params.id },
       {
@@ -129,11 +147,14 @@ const deletePoemById = async (req, res) => {
     if (!poemById) {
       return res.status(400).send({ msg: "The poem doesn't exist" });
     }
-
-    if (req.user.id !== poemById.authorId) {
-      return res
-        .status(400)
-        .send({ msg: "The author does not match the person logged in" });
+    if (
+      req.user.role !== "admin" &&
+      req.user.role !== "super-admin" &&
+      req.user.id.toString() !== poemById.authorId._id.toString()
+    ) {
+      return res.status(400).send({
+        msg: "The author does not match the person logged in or you are not an admin",
+      });
     }
 
     const deletedRes = await remove(req.params.id);
@@ -156,28 +177,34 @@ const likePoemById = async (req, res) => {
   try {
     const poemId = req.params.id;
     const userId = req.user.id;
-
     const poemById = await getById(poemId);
     if (!poemById) {
       return res.status(400).send({ msg: "The poem doesn't exist" });
     }
-
-    if (userId.toString() === poemById.authorId.toString()) {
+    if (userId.toString() === poemById.authorId._id.toString()) {
       return res.status(400).send({ msg: "The author can't like own poem" });
     }
 
+    const userLike = poemById.likes.find(
+      (like) => like.userId.toString() === userId.toString()
+    );
+
     let updatedPoem;
-    if (poemById.likes.includes(userId.toString())) {
-      updatedPoem = await update({ _id: poemId }, { $pull: { likes: userId } });
+    if (userLike) {
+      updatedPoem = await update(
+        { _id: poemId },
+        { $pull: { likes: { userId: userId } } }
+      );
       return res.status(200).json({
         message: "Poem successfully unliked the poem",
         success: true,
         data: updatedPoem,
       });
     } else {
+      const likeData = { userId, date: new Date() };
       updatedPoem = await update(
         { _id: poemId },
-        { $addToSet: { likes: userId } }
+        { $addToSet: { likes: likeData } }
       );
       return res.status(200).json({
         message: "Poem successfully liked the poem",
@@ -198,4 +225,5 @@ module.exports = {
   updatePoemById,
   deletePoemById,
   likePoemById,
+  getFavouritePoems,
 };
