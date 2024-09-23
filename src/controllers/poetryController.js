@@ -6,18 +6,28 @@ const {
   remove,
   getByField,
 } = require("../services/poetryService");
+const User = require("../models/userModel");
 
 const getPoems = async (req, res) => {
   try {
-    const response = await getAll().sort({ createdAt: -1 }).lean();
-
-    if (response.length > 0) {
-      return res.status(200).send({ success: true, data: response });
-    } else {
+    const poems = await getAll().sort({ createdAt: -1 }).lean();
+    if (poems.length === 0) {
       return res
         .status(400)
         .send({ success: false, msg: "Poems are not found" });
     }
+
+    const validPoems = [];
+    for (let poem of poems) {
+      const authorExists = await User.findById(poem.authorId);
+      if (!authorExists) {
+        await remove(poem._id);
+      } else {
+        validPoems.push(poem);
+      }
+    }
+
+    return res.status(200).send({ success: true, data: validPoems });
   } catch (error) {
     return res.status(404).send({ success: false, msg: error });
   }
@@ -27,15 +37,24 @@ const getPoemById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const response = await getById(id);
+    const poem = await getById(id);
 
-    if (response) {
-      return res.status(200).send({ success: true, data: response });
-    } else {
+    if (!poem) {
       return res
         .status(400)
         .send({ success: false, msg: "Poem is not found by ID" });
     }
+
+    const authorExists = await User.findById(poem.authorId);
+    if (!authorExists) {
+      await remove(id);
+      return res.status(400).send({
+        success: false,
+        msg: "Author no longer exists, and the poem has been deleted.",
+      });
+    }
+
+    return res.status(200).send({ success: true, data: poem });
   } catch (error) {
     return res.status(404).send({ success: false, msg: error });
   }
