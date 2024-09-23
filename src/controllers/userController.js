@@ -4,9 +4,10 @@ const { generateToken, verifyToken } = require("../utils/jwtToken");
 
 const login = async (req, res) => {
   const { email, password } = req.body;
+
   const whitespaceRegex = /^\s*$/;
 
-  if (!whitespaceRegex.test(email) || !whitespaceRegex.test(password)) {
+  if (whitespaceRegex.test(email) || whitespaceRegex.test(password)) {
     return res.status(400).json({ message: "All fields are required" });
   }
 
@@ -63,7 +64,6 @@ const register = async (req, res) => {
       photo: photo || "",
       password: hashedPassword,
     });
-
     const savedUser = await user.save();
 
     res.json({
@@ -71,13 +71,11 @@ const register = async (req, res) => {
       userId: savedUser._id,
     });
   } catch (error) {
-    console.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
 
 const authenticateToken = (req, res, next) => {
-  console.log(1);
   const token = req.headers["authorization"]?.split(" ")[1];
   if (!token) {
     return res
@@ -86,8 +84,52 @@ const authenticateToken = (req, res, next) => {
   }
 
   try {
-    console.log(token);
     const user = verifyToken(token);
+    req.user = user;
+    next();
+  } catch (err) {
+    return res.status(400).json({ message: "Invalid token." });
+  }
+};
+
+const authenticateAdminToken = (req, res, next) => {
+  const token = req.headers["authorization"]?.split(" ")[1];
+  if (!token) {
+    return res
+      .status(401)
+      .json({ message: "Access denied. No token provided." });
+  }
+
+  try {
+    const user = verifyToken(token);
+    if (user.role !== "admin" && user.role !== "super-admin") {
+      return res
+        .status(401)
+        .json({ message: "Access denied. You haven't an admin role." });
+    }
+
+    req.user = user;
+    next();
+  } catch (err) {
+    return res.status(400).json({ message: "Invalid token." });
+  }
+};
+
+const authenticateSuperAdminToken = (req, res, next) => {
+  const token = req.headers["authorization"]?.split(" ")[1];
+  if (!token) {
+    return res
+      .status(401)
+      .json({ message: "Access denied. No token provided." });
+  }
+
+  try {
+    const user = verifyToken(token);
+    if (user.role !== "super-admin") {
+      return res
+        .status(401)
+        .json({ message: "Access denied. You haven't a super admin role." });
+    }
     req.user = user;
     next();
   } catch (err) {
@@ -109,6 +151,7 @@ const checkToken = (req, res) => {
       res.status(200).json({
         message: "User was checked by a token",
         success: true,
+        user: user,
       });
     }
   } catch (err) {
@@ -116,4 +159,125 @@ const checkToken = (req, res) => {
   }
 };
 
-module.exports = { login, register, authenticateToken, checkToken };
+const getUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const response = await User.findById(id);
+
+    if (response) {
+      return res.status(200).send({
+        success: true,
+        data: {
+          firstName: response.firstName,
+          lastName: response.lastName,
+          nickName: response.nickName,
+          email: response.email,
+          photo: response.photo,
+        },
+      });
+    } else {
+      return res
+        .status(400)
+        .send({ success: false, msg: "User is not found by ID" });
+    }
+  } catch (error) {
+    return res.status(404).send({ success: false, msg: error });
+  }
+};
+
+const getUsers = async (req, res) => {
+  try {
+    const response = await User.find({}).sort({ createdAt: -1 }).lean();
+    if (response) {
+      return res.status(200).send({
+        success: true,
+        data: response,
+      });
+    } else {
+      return res
+        .status(400)
+        .send({ success: false, msg: "Users are not found" });
+    }
+  } catch (error) {
+    return res.status(404).send({ success: false, msg: error });
+  }
+};
+
+const updateUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const response = await User.findByIdAndUpdate(id, req.body);
+
+    if (response) {
+      return res.status(200).send({
+        success: true,
+        data: response,
+      });
+    } else {
+      return res
+        .status(400)
+        .send({ success: false, msg: "User is not found by ID" });
+    }
+  } catch (error) {
+    return res.status(404).send({ success: false, msg: error });
+  }
+};
+
+const deleteUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const response = await User.findByIdAndDelete(id);
+    if (response) {
+      return res.status(200).send({
+        success: true,
+        data: response,
+        msg: "The user has been removed",
+      });
+    } else {
+      return res
+        .status(400)
+        .send({ success: false, msg: "User is not found by ID" });
+    }
+  } catch (error) {
+    return res.status(404).send({ success: false, msg: error });
+  }
+};
+
+const updateAdminById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+    const response = await User.findByIdAndUpdate(
+      id,
+      { role: role },
+      { new: true }
+    );
+    if (response) {
+      return res.status(200).send({
+        success: true,
+        data: response,
+      });
+    } else {
+      return res
+        .status(400)
+        .send({ success: false, msg: "User is not found by ID" });
+    }
+  } catch (error) {
+    return res.status(404).send({ success: false, msg: error });
+  }
+};
+
+module.exports = {
+  login,
+  register,
+  checkToken,
+  getUsers,
+  getUserById,
+  updateUserById,
+  deleteUserById,
+  updateAdminById,
+  authenticateToken,
+  authenticateAdminToken,
+  authenticateSuperAdminToken,
+};
