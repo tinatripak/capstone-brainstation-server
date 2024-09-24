@@ -20,7 +20,7 @@ app.listen(PORT, () => {
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: "https://capstone-brainstation-client.vercel.app",
     methods: "GET, POST, PUT, DELETE, OPTIONS",
     allowedHeaders: "Access-Control-Allow-Origin, Content-Type, Authorization",
     credentials: true,
